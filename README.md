@@ -1,4 +1,4 @@
-# GoPolyAI 🚀
+# GoPolyAI 🚀 EN/TR
 
 ![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg)
 ![Go](https://img.shields.io/badge/go-1.21%2B-00ADD8.svg)
@@ -237,3 +237,245 @@ Distributed under the MIT License. See `LICENSE` for more information.
 -----
 
 **Built with ❤️ by [Ahmet Taşdemir](https://github.com/AhmetTasdemir)**
+
+# ---------------------------------TÜRKÇE---------------------------------
+
+# GoPolyAI 🚀
+
+![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg)
+![Go](https://img.shields.io/badge/go-1.21%2B-00ADD8.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+
+**Go İçin Nihai Tedarikçi-Bağımsız (Vendor-Agnostic) AI Geçidi.**
+
+**GoPolyAI**, birden fazla yapay zeka sağlayıcısını (OpenAI, Google Gemini, Anthropic Claude, Ollama/Local) tek bir standart API altında birleştiren, yüksek performanslı ve arayüz tabanlı bir kütüphanedir. Tedarikçi kilidini (vendor lock-in) ortadan kaldırır, modeller arası geçişi basitleştirir ve yerleşik yedekleme (fallback) mekanizmalarıyla yüksek erişilebilirlik sağlar.
+
+> **Kodunu bir kez yaz. Herhangi bir AI ile çalıştır.**
+
+---
+
+## 🧐 Neden GoPolyAI? (Sorun vs. Çözüm)
+
+GoPolyAI'dan önce, OpenAI'dan Google Gemini'ye geçmek; HTTP istemcilerini yeniden yazmayı, JSON yapılarını değiştirmeyi ve farklı kimlik doğrulama başlıklarını yönetmeyi gerektiriyordu.
+
+| Özellik | ❌ GoPolyAI Olmadan (Eski Yöntem) | ✅ GoPolyAI İle (Elit Yöntem) |
+| :--- | :--- | :--- |
+| **Sağlayıcı Değiştirme** | Mantık ve struct yapılarının yeniden yazılmasını gerektirir. | **Sıfır kod değişikliği.** Sadece bir konfigürasyon metnini değiştirin. |
+| **Kod Tabanı** | `if provider == "openai"` bloklarıyla doludur. | **Temiz ve Polimorfik.** Tek bir arayüz (`AIProvider`). |
+| **Güvenilirlik** | OpenAI çökerse uygulamanız da çöker. | **Dayanıklı.** İkincil sağlayıcılara otomatik geçiş (Fallback). |
+| **Geliştirme Maliyeti** | Her test API çağrısı için para ödersiniz. | **Ücretsiz.** Yerel geliştirme için `mock` veya `ollama` kullanın. |
+| **Öğrenme Eğrisi** | Her sağlayıcının özel API'sini öğrenmek zorundasınız. | **Tek bir metodu** öğrenin: `Generate()`. |
+
+---
+
+## 🌟 Temel Özellikler
+
+* **🧩 Gerçek Polimorfizm:** Tek bir `AIProvider` arayüzü tüm karmaşıklığı soyutlar.
+* **🛡️ Akıllı Fallback (Yedekleme) Sistemi:** Birincil sağlayıcı (örn. OpenAI) başarısız olursa veya zaman aşımına uğrarsa otomatik olarak yedek sağlayıcıya (örn. Google) geçer. **Sıfır kesinti.**
+* **🏠 Yerel & Bulut Hibrit Yapı:** Bulut devlerinin yanı sıra **Ollama** aracılığıyla yerel LLM'ler için kusursuz destek.
+* **⚡ Factory Deseni Desteği:** CLI bayrakları veya Ortam Değişkenleri aracılığıyla dinamik sağlayıcı seçimi.
+* **🧪 Dahili Mocklama:** Birim testleri ve UI geliştirme için sıfır maliyetli Mock istemcisi içerir.
+* **🐳 Docker Uyumlu:** Konteynerli ortamlarda kusursuz çalışacak şekilde tasarlanmıştır.
+
+---
+
+## 📦 Kurulum
+
+Kütüphaneyi Go projenize ekleyin:
+
+```bash
+go get [github.com/AhmetTasdemir/gopolyai@v1.0.0](https://github.com/AhmetTasdemir/gopolyai@v1.0.0)
+````
+
+*(Not: `go.mod` dosyanızın başlatıldığından emin olun. Değilse önce `go mod init projedi` komutunu çalıştırın).*
+
+-----
+
+## 🚀 Hızlı Başlangıç Rehberi
+
+Bu örnek, çekirdek mantığı değiştirmeden OpenAI, Google ve Yerel AI arasında geçiş yapabilen bir CLI aracının nasıl oluşturulacağını gösterir.
+
+### 1\. `main.go` Dosyasını Oluşturun
+
+```go
+package main
+
+import (
+	"context"
+	"flag"
+	"fmt"
+	"log"
+	"os"
+
+	"[github.com/AhmetTasdemir/gopolyai/pkg/ai](https://github.com/AhmetTasdemir/gopolyai/pkg/ai)"
+	"[github.com/AhmetTasdemir/gopolyai/pkg/ai/anthropic](https://github.com/AhmetTasdemir/gopolyai/pkg/ai/anthropic)"
+	"[github.com/AhmetTasdemir/gopolyai/pkg/ai/google](https://github.com/AhmetTasdemir/gopolyai/pkg/ai/google)"
+	"[github.com/AhmetTasdemir/gopolyai/pkg/ai/ollama](https://github.com/AhmetTasdemir/gopolyai/pkg/ai/ollama)"
+	"[github.com/AhmetTasdemir/gopolyai/pkg/ai/openai](https://github.com/AhmetTasdemir/gopolyai/pkg/ai/openai)"
+)
+
+func main() {
+	// 1. CLI Bayrakları ile Dinamik Konfigürasyon
+	provider := flag.String("p", "ollama", "Sağlayıcı: openai, google, anthropic, ollama")
+	apiKey := flag.String("k", os.Getenv("AI_API_KEY"), "API Anahtarı")
+	model := flag.String("m", "", "Model adı (opsiyonel)")
+	flag.Parse()
+
+	prompt := "Kuantum Bilgisayarları tek bir cümleyle açıkla."
+	if len(flag.Args()) > 0 {
+		prompt = flag.Args()[0]
+	}
+
+	// 2. Factory Deseni: Uygulamayı Seç
+	var client ai.AIProvider
+
+	switch *provider {
+	case "openai":
+		client = openai.NewClient(*apiKey)
+	case "google":
+		client = google.NewClient(*apiKey)
+	case "anthropic":
+		client = anthropic.NewClient(*apiKey)
+	case "ollama":
+		client = ollama.NewClient() // Yerel için API anahtarı gerekmez
+	default:
+		log.Fatalf("Bilinmeyen sağlayıcı: %s", *provider)
+	}
+
+	// 3. Konfigürasyon (Opsiyonel geçersiz kılmalar)
+	cfg := ai.Config{Temperature: 0.7}
+	if *model != "" {
+		cfg.ModelName = *model
+	}
+	client.Configure(cfg)
+
+	// 4. Çalıştırma (Polimorfik Sihir)
+	fmt.Printf("--- Kullanılan Sağlayıcı: %s ---\n", client.Name())
+	
+	resp, err := client.Generate(context.Background(), prompt)
+	if err != nil {
+		log.Fatalf("Hata: %v", err)
+	}
+
+	fmt.Println(">> Cevap:", resp)
+}
+```
+
+### 2\. Çalıştırın\!
+
+**Senaryo A: Ücretsiz Yerel Geliştirme (Ollama)**
+*Ön koşul: ollama.com adresinden Ollama'yı yükleyin.*
+
+```bash
+go run main.go -p ollama "Alan Turing kimdir?"
+```
+
+**Senaryo B: OpenAI ile Canlı Ortam (Production)**
+
+```bash
+export AI_API_KEY="sk-sizin-openai-anahtarınız"
+go run main.go -p openai -m "gpt-4o" "Go dili hakkında bir şiir yaz."
+```
+
+**Senaryo C: Google Gemini'ye Geçiş**
+
+```bash
+go run main.go -p google -k "AIza-sizin-google-anahtarınız" "Türkiye'nin başkenti neresidir?"
+```
+
+-----
+
+## 🛡️ Gelişmiş Kullanım: Yüksek Erişilebilirlik (Fallback)
+
+GoPolyAI, güvenilirliğin pazarlık konusu olamayacağı üretim ortamlarında parlar. Sağlayıcıları zincirlemek için **Composite Pattern** kullanın.
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "[github.com/AhmetTasdemir/gopolyai/pkg/ai](https://github.com/AhmetTasdemir/gopolyai/pkg/ai)"
+    "[github.com/AhmetTasdemir/gopolyai/pkg/ai/google](https://github.com/AhmetTasdemir/gopolyai/pkg/ai/google)"
+    "[github.com/AhmetTasdemir/gopolyai/pkg/ai/openai](https://github.com/AhmetTasdemir/gopolyai/pkg/ai/openai)"
+)
+
+func main() {
+    // Birincil ve İkincil sağlayıcıları tanımla
+    primary := openai.NewClient("sk-...")
+    secondary := google.NewClient("AIza-...")
+
+    // Fallback İstemcisini Oluştur
+    // OpenAI başarısız olursa (401, 500, Zaman Aşımı), Google otomatik olarak devreye girer.
+    resilientClient := ai.NewFallbackClient(primary, secondary)
+
+    // Diğer sağlayıcılar gibi kullanın!
+    resp, err := resilientClient.Generate(context.Background(), "Kritik görev sorgusu")
+    
+    if err != nil {
+        fmt.Println("Her iki sistem de başarısız oldu!", err)
+    } else {
+        fmt.Println("Başarılı:", resp)
+        fmt.Println("Hizmet Veren:", resilientClient.Name()) 
+        // Çıktı şöyle olabilir: "SmartFallback (Pri: OpenAI -> Sec: Google)"
+    }
+}
+```
+
+-----
+
+## 🌍 Gerçek Hayat Senaryoları
+
+### 1\. "Maliyet Etkin" Startup Süreci
+
+**Sorun:** Geliştirme ve CI/CD testleri için GPT-4 kullanmak çok pahalıdır.
+**GoPolyAI ile Çözüm:**
+
+  * **Yerel/Dev Ortamı:** `AI_PROVIDER=ollama` ayarlayın. Geliştiriciler Llama3'ü yerelde ücretsiz kullanır.
+  * **Staging (Test) Ortamı:** Ucuz bulut testi için `AI_PROVIDER=openai` ve `gpt-3.5-turbo` kullanın.
+  * **Canlı (Production) Ortam:** Yüksek kaliteli kullanıcı yanıtları için `AI_PROVIDER=anthropic` ve `claude-3.5-sonnet` kullanın.
+  * *Tüm bunlar tek bir satır Go kodu değiştirilmeden yapılır.*
+
+### 2\. "Asla Kesilmeyen" Kurumsal Servis
+
+**Sorun:** Chatbotunuz OpenAI'a güveniyor. OpenAI kesinti yaşadığında müşterileriniz hizmet alamıyor.
+**GoPolyAI ile Çözüm:**
+`FallbackClient` uygulayın. OpenAI'ı birincil, Azure OpenAI veya Google Gemini'yi ikincil olarak ayarlayın. Servisiniz bağımlılıkları çeşitlendirerek %99.99 kullanılabilirlik elde eder.
+
+### 3\. Modellerin A/B Testi
+
+**Sorun:** Claude 3'ün sizin kullanım durumunuz için GPT-4'ten daha iyi olup olmadığını bilmiyorsunuz.
+**GoPolyAI ile Çözüm:**
+Her iki istemciyi de başlatan ve aynı istemi ikisine de gönderen basit bir döngü yazın. Sonuçları günlüğe kaydedin ve anında karşılaştırın.
+
+-----
+
+## 📂 Desteklenen Sağlayıcılar ve Konfigürasyon
+
+| Sağlayıcı | Anahtar Kelime | Kimlik Doğrulama | Varsayılan Model |
+| :--- | :--- | :--- | :--- |
+| **OpenAI** | `openai` | API Key | `gpt-3.5-turbo` |
+| **Google** | `google` | API Key | `gemini-1.5-flash` |
+| **Anthropic**| `anthropic`| API Key | `claude-3-5-sonnet`|
+| **Ollama** | `ollama` | Yok (Localhost) | `llama3` |
+| **Mock** | `mock` | Yok | N/A |
+
+-----
+
+## 🤝 Katkıda Bulunma
+
+Katkılarınızı bekliyoruz\!
+
+1.  Projeyi fork'layın.
+2.  Kendi özellik dalınızı oluşturun (`git checkout -b feature/HarikaOzellik`).
+3.  Değişikliklerinizi commit'leyin (`git commit -m 'HarikaOzellik eklendi'`).
+4.  Dala push'layın (`git push origin feature/HarikaOzellik`).
+5.  Bir Pull Request açın.
+
+## 📄 Lisans
+
+MIT Lisansı altında dağıtılmaktadır. Daha fazla bilgi için `LICENSE` dosyasına bakın.
+
+-----
+
+**[Ahmet Taşdemir](https://github.com/AhmetTasdemir) tarafından ❤️ ile geliştirildi.**
