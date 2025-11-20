@@ -1,4 +1,4 @@
-# GoPolyAI 🚀 EN/TR
+# GoPolyAI 🚀
 
 ![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg)
 ![Go](https://img.shields.io/badge/go-1.21%2B-00ADD8.svg)
@@ -30,8 +30,8 @@ Before GoPolyAI, switching from OpenAI to Google Gemini required rewriting HTTP 
 
 * **🧩 True Polymorphism:** A single `AIProvider` interface abstracts away all complexity.
 * **🛡️ Smart Fallback System:** Automatically switches to a backup provider (e.g., Google) if the primary one (e.g., OpenAI) fails or times out. **Zero downtime.**
-* **🏠 Local & Cloud Hybrid:** seamless support for local LLMs via **Ollama** alongside cloud giants.
-* **⚡ Factory Pattern Support:** dynamic provider selection via CLI flags or Environment Variables.
+* **🏠 Local & Cloud Hybrid:** Seamless support for local LLMs via **Ollama** alongside cloud giants.
+* **⚡ Factory Pattern Support:** Dynamic provider selection via CLI flags or Environment Variables.
 * **🧪 Built-in Mocking:** Includes a zero-cost Mock client for unit testing and UI development.
 * **🐳 Docker Ready:** Designed to work flawlessly within containerized environments.
 
@@ -39,10 +39,10 @@ Before GoPolyAI, switching from OpenAI to Google Gemini required rewriting HTTP 
 
 ## 📦 Installation
 
-Install the library into your Go project:
+Install the library into your Go project (Case-sensitive: use lowercase path):
 
 ```bash
-go get [github.com/AhmetTasdemir/gopolyai@v1.0.0](https://github.com/AhmetTasdemir/gopolyai@v1.0.0)
+go get [github.com/ahmettasdemir/gopolyai@v1.0.0](https://github.com/ahmettasdemir/gopolyai@v1.0.0)
 ````
 
 *(Ensure your `go.mod` is initialized. If not, run `go mod init myproject` first).*
@@ -65,11 +65,11 @@ import (
 	"log"
 	"os"
 
-	"[github.com/AhmetTasdemir/gopolyai/pkg/ai](https://github.com/AhmetTasdemir/gopolyai/pkg/ai)"
-	"[github.com/AhmetTasdemir/gopolyai/pkg/ai/anthropic](https://github.com/AhmetTasdemir/gopolyai/pkg/ai/anthropic)"
-	"[github.com/AhmetTasdemir/gopolyai/pkg/ai/google](https://github.com/AhmetTasdemir/gopolyai/pkg/ai/google)"
-	"[github.com/AhmetTasdemir/gopolyai/pkg/ai/ollama](https://github.com/AhmetTasdemir/gopolyai/pkg/ai/ollama)"
-	"[github.com/AhmetTasdemir/gopolyai/pkg/ai/openai](https://github.com/AhmetTasdemir/gopolyai/pkg/ai/openai)"
+	"[github.com/ahmettasdemir/gopolyai/pkg/ai](https://github.com/ahmettasdemir/gopolyai/pkg/ai)"
+	"[github.com/ahmettasdemir/gopolyai/pkg/ai/anthropic](https://github.com/ahmettasdemir/gopolyai/pkg/ai/anthropic)"
+	"[github.com/ahmettasdemir/gopolyai/pkg/ai/google](https://github.com/ahmettasdemir/gopolyai/pkg/ai/google)"
+	"[github.com/ahmettasdemir/gopolyai/pkg/ai/ollama](https://github.com/ahmettasdemir/gopolyai/pkg/ai/ollama)"
+	"[github.com/ahmettasdemir/gopolyai/pkg/ai/openai](https://github.com/ahmettasdemir/gopolyai/pkg/ai/openai)"
 )
 
 func main() {
@@ -153,9 +153,9 @@ package main
 import (
     "context"
     "fmt"
-    "[github.com/AhmetTasdemir/gopolyai/pkg/ai](https://github.com/AhmetTasdemir/gopolyai/pkg/ai)"
-    "[github.com/AhmetTasdemir/gopolyai/pkg/ai/google](https://github.com/AhmetTasdemir/gopolyai/pkg/ai/google)"
-    "[github.com/AhmetTasdemir/gopolyai/pkg/ai/openai](https://github.com/AhmetTasdemir/gopolyai/pkg/ai/openai)"
+    "[github.com/ahmettasdemir/gopolyai/pkg/ai](https://github.com/ahmettasdemir/gopolyai/pkg/ai)"
+    "[github.com/ahmettasdemir/gopolyai/pkg/ai/google](https://github.com/ahmettasdemir/gopolyai/pkg/ai/google)"
+    "[github.com/ahmettasdemir/gopolyai/pkg/ai/openai](https://github.com/ahmettasdemir/gopolyai/pkg/ai/openai)"
 )
 
 func main() {
@@ -238,7 +238,9 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 **Built with ❤️ by [Ahmet Taşdemir](https://github.com/AhmetTasdemir)**
 
-# ---------------------------------TÜRKÇE---------------------------------
+--
+
+### 2. Türkçe Versiyon 
 
 # GoPolyAI 🚀
 
@@ -281,10 +283,10 @@ GoPolyAI'dan önce, OpenAI'dan Google Gemini'ye geçmek; HTTP istemcilerini yeni
 
 ## 📦 Kurulum
 
-Kütüphaneyi Go projenize ekleyin:
+Kütüphaneyi Go projenize ekleyin (Lütfen küçük harf kullanın):
 
 ```bash
-go get [github.com/AhmetTasdemir/gopolyai@v1.0.0](https://github.com/AhmetTasdemir/gopolyai@v1.0.0)
+go get [github.com/ahmettasdemir/gopolyai@v1.0.0](https://github.com/ahmettasdemir/gopolyai@v1.0.0)
 ````
 
 *(Not: `go.mod` dosyanızın başlatıldığından emin olun. Değilse önce `go mod init projedi` komutunu çalıştırın).*
@@ -307,11 +309,11 @@ import (
 	"log"
 	"os"
 
-	"[github.com/AhmetTasdemir/gopolyai/pkg/ai](https://github.com/AhmetTasdemir/gopolyai/pkg/ai)"
-	"[github.com/AhmetTasdemir/gopolyai/pkg/ai/anthropic](https://github.com/AhmetTasdemir/gopolyai/pkg/ai/anthropic)"
-	"[github.com/AhmetTasdemir/gopolyai/pkg/ai/google](https://github.com/AhmetTasdemir/gopolyai/pkg/ai/google)"
-	"[github.com/AhmetTasdemir/gopolyai/pkg/ai/ollama](https://github.com/AhmetTasdemir/gopolyai/pkg/ai/ollama)"
-	"[github.com/AhmetTasdemir/gopolyai/pkg/ai/openai](https://github.com/AhmetTasdemir/gopolyai/pkg/ai/openai)"
+	"[github.com/ahmettasdemir/gopolyai/pkg/ai](https://github.com/ahmettasdemir/gopolyai/pkg/ai)"
+	"[github.com/ahmettasdemir/gopolyai/pkg/ai/anthropic](https://github.com/ahmettasdemir/gopolyai/pkg/ai/anthropic)"
+	"[github.com/ahmettasdemir/gopolyai/pkg/ai/google](https://github.com/ahmettasdemir/gopolyai/pkg/ai/google)"
+	"[github.com/ahmettasdemir/gopolyai/pkg/ai/ollama](https://github.com/ahmettasdemir/gopolyai/pkg/ai/ollama)"
+	"[github.com/ahmettasdemir/gopolyai/pkg/ai/openai](https://github.com/ahmettasdemir/gopolyai/pkg/ai/openai)"
 )
 
 func main() {
@@ -395,9 +397,9 @@ package main
 import (
     "context"
     "fmt"
-    "[github.com/AhmetTasdemir/gopolyai/pkg/ai](https://github.com/AhmetTasdemir/gopolyai/pkg/ai)"
-    "[github.com/AhmetTasdemir/gopolyai/pkg/ai/google](https://github.com/AhmetTasdemir/gopolyai/pkg/ai/google)"
-    "[github.com/AhmetTasdemir/gopolyai/pkg/ai/openai](https://github.com/AhmetTasdemir/gopolyai/pkg/ai/openai)"
+    "[github.com/ahmettasdemir/gopolyai/pkg/ai](https://github.com/ahmettasdemir/gopolyai/pkg/ai)"
+    "[github.com/ahmettasdemir/gopolyai/pkg/ai/google](https://github.com/ahmettasdemir/gopolyai/pkg/ai/google)"
+    "[github.com/ahmettasdemir/gopolyai/pkg/ai/openai](https://github.com/ahmettasdemir/gopolyai/pkg/ai/openai)"
 )
 
 func main() {
