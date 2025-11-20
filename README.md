@@ -240,7 +240,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 --
 
-### 2. Türkçe Versiyon 
+## -----------------Türkçe Versiyon----------------- 
 
 # GoPolyAI 🚀
 
