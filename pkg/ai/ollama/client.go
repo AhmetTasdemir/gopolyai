@@ -5,9 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"gopolyai/pkg/ai"
 	"net/http"
 	"time"
+
+	"github.com/ahmettasdemir/gopolyai/pkg/ai"
 )
 
 const defaultBaseURL = "http://localhost:11434/api/generate"

@@ -2,8 +2,9 @@ package mock
 
 import (
 	"context"
-	"gopolyai/pkg/ai"
 	"time"
+
+	"github.com/ahmettasdemir/gopolyai/pkg/ai"
 )
 
 type MockClient struct {

@@ -4,83 +4,63 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"gopolyai/pkg/ai"
-	"gopolyai/pkg/ai/mock"
-	"gopolyai/pkg/ai/ollama"
-	"gopolyai/pkg/ai/openai"
+	"log"
 	"os"
-	"strings"
-	"time"
+
+	"github.com/ahmettasdemir/gopolyai/pkg/ai"
+	"github.com/ahmettasdemir/gopolyai/pkg/ai/anthropic"
+	"github.com/ahmettasdemir/gopolyai/pkg/ai/google"
+	"github.com/ahmettasdemir/gopolyai/pkg/ai/ollama"
+	"github.com/ahmettasdemir/gopolyai/pkg/ai/openai"
 )
 
 func main() {
-	providerType := flag.String("p", "mock", "AI Sağlayıcısı: openai, ollama, mock, auto")
-	modelName := flag.String("m", "", "Model ismi (örn: gpt-4o, llama3)")
-	apiKey := flag.String("k", "", "API Key (Sadece OpenAI için gerekli, opsiyonel)")
+
+	provider := flag.String("p", "ollama", "AI Sağlayıcısı: openai, google, anthropic, ollama")
+	apiKey := flag.String("k", os.Getenv("AI_API_KEY"), "API Key (Env: AI_API_KEY)")
+
+	modelName := flag.String("m", "", "Model ismi (örn: gpt-4o, gemini-1.5-flash, llama3)")
 
 	flag.Parse()
 
-	args := flag.Args()
-	if len(args) < 1 {
-		fmt.Println("Kullanım: gopoly -p [provider] \"Sorunuz buraya\"")
-		os.Exit(1)
-	}
-	prompt := strings.Join(args, " ")
-
-	var aiClient ai.AIProvider
-
-	finalAPIKey := *apiKey
-	if finalAPIKey == "" {
-		finalAPIKey = os.Getenv("OPENAI_API_KEY")
+	prompt := "Go dili neden hızlıdır? Kısa bir cümleyle açıkla."
+	if len(flag.Args()) > 0 {
+		prompt = flag.Args()[0]
 	}
 
-	switch *providerType {
+	var client ai.AIProvider
+
+	if *apiKey == "" && *provider != "ollama" {
+		fmt.Println("UYARI: API Key (-k) veya AI_API_KEY ortam değişkeni belirtilmedi.")
+	}
+
+	switch *provider {
 	case "openai":
-		client := openai.NewClient(finalAPIKey)
-
-		if *modelName != "" {
-			client.Configure(ai.Config{ModelName: *modelName})
-		}
-		aiClient = client
-
+		client = openai.NewClient(*apiKey)
+	case "google":
+		client = google.NewClient(*apiKey)
+	case "anthropic":
+		client = anthropic.NewClient(*apiKey)
 	case "ollama":
-		client := ollama.NewClient()
-		if *modelName != "" {
-			client.Configure(ai.Config{ModelName: *modelName})
-		}
-		aiClient = client
-
-	case "mock":
-		aiClient = mock.NewClient("Bu bir test cevabıdır.", false)
-
-	case "auto":
-		p1 := openai.NewClient(finalAPIKey)
-		p2 := mock.NewClient("OpenAI çöktü, Mock devrede.", false)
-		aiClient = ai.NewFallbackClient(p1, p2)
-
+		client = ollama.NewClient()
 	default:
-		fmt.Printf("Hata: Bilinmeyen sağlayıcı '%s'\n", *providerType)
-		os.Exit(1)
+		log.Fatalf("Bilinmeyen sağlayıcı: %s", *provider)
 	}
 
-	runAgent(aiClient, prompt)
-}
+	cfg := ai.Config{
+		Temperature: 0.7,
+	}
+	if *modelName != "" {
+		cfg.ModelName = *modelName
+	}
 
-func runAgent(p ai.AIProvider, prompt string) {
-	fmt.Printf("--- [%s] Çalışıyor ---\n", p.Name())
+	client.Configure(cfg)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	start := time.Now()
-	resp, err := p.Generate(ctx, prompt)
-	duration := time.Since(start)
-
+	fmt.Printf("--- %s Kullanılıyor ---\n", client.Name())
+	resp, err := client.Generate(context.Background(), prompt)
 	if err != nil {
-		fmt.Printf("\n[HATA] İşlem başarısız: %v\n", err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 
-	fmt.Printf("\n>> CEVAP:\n%s\n", resp)
-	fmt.Printf("\n(Süre: %v)\n", duration)
+	fmt.Println(">>", resp)
 }

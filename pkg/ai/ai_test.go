@@ -2,9 +2,10 @@ package ai_test
 
 import (
 	"context"
-	"gopolyai/pkg/ai"
-	"gopolyai/pkg/ai/mock"
 	"testing"
+
+	"github.com/ahmettasdemir/gopolyai/pkg/ai"
+	"github.com/ahmettasdemir/gopolyai/pkg/ai/mock"
 )
 
 func TestPolymorphism(t *testing.T) {

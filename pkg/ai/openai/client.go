@@ -6,9 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"gopolyai/pkg/ai"
 	"net/http"
 	"time"
+
+	"github.com/ahmettasdemir/gopolyai/pkg/ai"
 )
 
 const defaultBaseURL = "https://api.openai.com/v1/chat/completions"
