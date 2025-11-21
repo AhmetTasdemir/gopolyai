@@ -42,7 +42,7 @@ Before GoPolyAI, switching from OpenAI to Google Gemini required rewriting HTTP 
 Install the library into your Go project (Case-sensitive: use lowercase path):
 
 ```bash
-go get [github.com/ahmettasdemir/gopolyai@v1.0.0](https://github.com/ahmettasdemir/gopolyai@v1.0.0)
+go get github.com/ahmettasdemir/gopolyai@v1.0.0
 ````
 
 *(Ensure your `go.mod` is initialized. If not, run `go mod init myproject` first).*
@@ -286,7 +286,7 @@ GoPolyAI'dan önce, OpenAI'dan Google Gemini'ye geçmek; HTTP istemcilerini yeni
 Kütüphaneyi Go projenize ekleyin (Lütfen küçük harf kullanın):
 
 ```bash
-go get [github.com/ahmettasdemir/gopolyai@v1.0.0](https://github.com/ahmettasdemir/gopolyai@v1.0.0)
+go get github.com/ahmettasdemir/gopolyai@v1.0.0
 ````
 
 *(Not: `go.mod` dosyanızın başlatıldığından emin olun. Değilse önce `go mod init projedi` komutunu çalıştırın).*
