@@ -1,0 +1,23 @@
+app:
+  timeout: 60 # saniye cinsinden
+
+# Hangi sağlayıcıyı kullanmak istiyoruz?
+# Seçenekler: openai, google, anthropic, ollama, mock, auto
+active_provider: "mock"
+
+providers:
+  openai:
+    api_key: "sk-..."
+    model: "gpt-4o"
+  
+  google:
+    api_key: "AIza..."
+    model: "gemini-1.5-pro"
+  
+  anthropic:
+    api_key: "sk-ant-..."
+    model: "claude-3-5-sonnet-20240620"
+  
+  ollama:
+    base_url: "http://localhost:11434/api/generate"
+    model: "llama3"
