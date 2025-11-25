@@ -30,6 +30,7 @@ func main() {
 	apiKey := flag.String("k", os.Getenv("AI_API_KEY"), "API Key")
 	modelName := flag.String("m", "", "Model ismi")
 	streamMode := flag.Bool("s", false, "Turn on streaming mode")
+	rateLimit := flag.Int("rate-limit", 0, "Rate limit (requests per second). 0 = unlimited")
 	flag.Parse()
 
 	prompt := "What is an interface in Go?"
@@ -59,7 +60,13 @@ func main() {
 
 	pricedClient := middleware.NewCostEstimator(baseClient)
 
-	retryClient := middleware.NewResilientClient(pricedClient, middleware.RetryConfig{
+	var rateLimitedClient ai.AIProvider = pricedClient
+	if *rateLimit > 0 {
+		fmt.Printf(">> Rate Limiter Aktif: %d req/s\n", *rateLimit)
+		rateLimitedClient = middleware.NewRateLimiterMiddleware(pricedClient, *rateLimit, *rateLimit)
+	}
+
+	retryClient := middleware.NewResilientClient(rateLimitedClient, middleware.RetryConfig{
 		MaxRetries: 2, BaseDelay: 1 * time.Second, MaxDelay: 3 * time.Second,
 	})
 

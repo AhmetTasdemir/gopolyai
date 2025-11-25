@@ -2,131 +2,119 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/ahmettasdemir/gopolyai/pkg/ai"
+	"github.com/ahmettasdemir/gopolyai/pkg/ai/anthropic"
+	"github.com/ahmettasdemir/gopolyai/pkg/ai/google"
 	"github.com/ahmettasdemir/gopolyai/pkg/ai/logger"
 	"github.com/ahmettasdemir/gopolyai/pkg/ai/middleware"
+	"github.com/ahmettasdemir/gopolyai/pkg/ai/ollama"
+	"github.com/ahmettasdemir/gopolyai/pkg/ai/openai"
 )
 
-type MockProvider struct{}
+type SimpleJSONLogger struct{}
 
-func (m *MockProvider) Configure(cfg ai.Config) error { return nil }
-func (m *MockProvider) Name() string                  { return "Mock-GPT-4" }
-
-func (m *MockProvider) Generate(ctx context.Context, req ai.ChatRequest) (*ai.ChatResponse, error) {
-	// Yapay bir gecikme ekleyelim
-	time.Sleep(100 * time.Millisecond)
-	return &ai.ChatResponse{
-		Content: "Bu, Unary (Tekli) istek için test cevabıdır.",
-		Usage: ai.TokenUsage{
-			InputTokens:  50,
-			OutputTokens: 20,
-			TotalTokens:  70,
-		},
-	}, nil
+func (s *SimpleJSONLogger) Log(ctx context.Context, entry logger.LogEntry) {
+	data, _ := json.MarshalIndent(entry, "", "  ")
+	fmt.Printf("\n📝 [TELEMETRY LOG] >>\n%s\n", string(data))
 }
 
-func (m *MockProvider) GenerateStream(ctx context.Context, req ai.ChatRequest) (<-chan ai.StreamResponse, error) {
-	ch := make(chan ai.StreamResponse, 5)
-	go func() {
-		defer close(ch)
-		chunks := []string{"Bu ", "bir ", "streaming ", "test ", "cevabıdır."}
-
-		for _, chunk := range chunks {
-			time.Sleep(50 * time.Millisecond) // Her kelime arası bekleme
-			ch <- ai.StreamResponse{Chunk: chunk}
-		}
-
-		// Son pakette kullanım bilgisini gönder
-		ch <- ai.StreamResponse{
-			Usage: &ai.TokenUsage{
-				InputTokens:  10,
-				OutputTokens: 5,
-				TotalTokens:  15,
-			},
-		}
-	}()
-	return ch, nil
-}
-
-// === 2. SPY LOGGER (Casus Logger) ===
-// Logları konsola basan basit bir implementasyon.
-type ConsoleLogger struct{}
-
-func (c *ConsoleLogger) Log(ctx context.Context, entry logger.LogEntry) {
-	// Logların asenkron geldiğini görmek için renklendirme ve formatlama yapıyoruz
-	fmt.Printf("\n\n📝 [LOGGER YAKALADI] -------------------------------------\n")
-	fmt.Printf("   🆔 Operasyon : %s\n", entry.Operation)
-	fmt.Printf("   ⏱️  Süre      : %v\n", entry.Duration)
-	fmt.Printf("   🤖 Model     : %s (%s)\n", entry.Model, entry.Provider)
-	fmt.Printf("   💰 Maliyet   : $%.6f\n", entry.CostUSD)
-	fmt.Printf("   🔢 Token     : %d (In) / %d (Out)\n", entry.InputTokens, entry.OutputTokens)
-
-	if entry.RequestPayload != "" {
-		fmt.Printf("   📩 Request   : %s\n", entry.RequestPayload)
-	}
-	if entry.ResponsePayload != "" {
-		fmt.Printf("   📨 Response  : %s\n", entry.ResponsePayload)
-	}
-	fmt.Printf("------------------------------------------------------------\n")
-}
-
-// === 3. TEST SENARYOSU ===
 func main() {
-	fmt.Println("🚀 GoPolyAI Logger Entegrasyon Testi Başlıyor...")
+	provider := flag.String("p", "ollama", "AI Sağlayıcısı")
+	apiKey := flag.String("k", os.Getenv("AI_API_KEY"), "API Key")
+	modelName := flag.String("m", "", "Model ismi")
+	streamMode := flag.Bool("s", false, "Turn on streaming mode")
+	rateLimit := flag.Int("rate-limit", 0, "Rate limit (requests per second). 0 = unlimited")
+	flag.Parse()
 
-	// A. Zinciri Kuruyoruz
-	mockAI := &MockProvider{}
+	prompt := "What is an interface in Go?"
+	if len(flag.Args()) > 0 {
+		prompt = flag.Args()[0]
+	}
 
-	// 1. Önce Maliyet Hesaplayıcı (Token -> Dolar)
-	costMW := middleware.NewCostEstimator(mockAI)
+	var baseClient ai.AIProvider
+	switch *provider {
+	case "openai":
+		baseClient = openai.NewClient(*apiKey)
+	case "google":
+		baseClient = google.NewClient(*apiKey)
+	case "anthropic":
+		baseClient = anthropic.NewClient(*apiKey)
+	case "ollama":
+		baseClient = ollama.NewClient()
+	default:
+		log.Fatalf("Unknown provider: %s", *provider)
+	}
 
-	// 2. Sonra Logger (Maliyeti de loglasın diye dışta)
-	myLogger := &ConsoleLogger{}
-	logConfig := logger.Config{LogPayloads: true, LogErrorsOnly: false}
+	cfg := ai.Config{Temperature: 0.7}
+	if *modelName != "" {
+		cfg.ModelName = *modelName
+	}
+	baseClient.Configure(cfg)
 
-	// Test edilen asıl eleman:
-	finalClient := middleware.NewLoggingMiddleware(costMW, myLogger, logConfig)
+	pricedClient := middleware.NewCostEstimator(baseClient)
 
-	ctx := context.Background()
+	var rateLimitedClient ai.AIProvider = pricedClient
+	if *rateLimit > 0 {
+		fmt.Printf(">> Rate Limiter Aktif: %d req/s\n", *rateLimit)
+		rateLimitedClient = middleware.NewRateLimiterMiddleware(pricedClient, *rateLimit, *rateLimit)
+	}
 
-	// --- SENARYO 1: Normal İstek (Generate) ---
-	fmt.Println("\n--- [TEST 1] Unary Request Başlatılıyor... ---")
+	retryClient := middleware.NewResilientClient(rateLimitedClient, middleware.RetryConfig{
+		MaxRetries: 2, BaseDelay: 1 * time.Second, MaxDelay: 3 * time.Second,
+	})
+
+	myLogger := &SimpleJSONLogger{}
+	logConfig := logger.Config{
+		LogPayloads:   true,
+		LogErrorsOnly: false,
+	}
+	loggedClient := middleware.NewLoggingMiddleware(retryClient, myLogger, logConfig)
+	finalClient := middleware.NewCircuitBreaker(loggedClient, 3, 30*time.Second)
+
+	fmt.Printf("--- 🧠 %s Başlatılıyor ---\n", finalClient.Name())
+
+	req := ai.ChatRequest{
+		Model: *modelName,
+		Messages: []ai.ChatMessage{
+			{Role: "user", Content: []ai.Content{{Type: "text", Text: prompt}}},
+		},
+		Temperature: 0.7,
+	}
+
 	start := time.Now()
-	resp, err := finalClient.Generate(ctx, ai.ChatRequest{
-		Model:    "gpt-4o", // Pahalı model seçelim ki maliyet hesaplansın
-		Messages: []ai.ChatMessage{{Role: "user", Content: []ai.Content{{Type: "text", Text: "Merhaba"}}}},
-	})
-	if err != nil {
-		log.Fatal(err)
+
+	if *streamMode {
+		fmt.Println(">> STREAM MODU AKTİF...")
+		streamChan, err := finalClient.GenerateStream(context.Background(), req)
+		if err != nil {
+			log.Fatalf("HATA: %v", err)
+		}
+
+		for packet := range streamChan {
+			if packet.Err != nil {
+				fmt.Printf("\n❌ Stream Hatası: %v\n", packet.Err)
+				break
+			}
+			fmt.Print(packet.Chunk)
+		}
+		fmt.Println()
+	} else {
+		resp, err := finalClient.Generate(context.Background(), req)
+		if err != nil {
+			log.Fatalf("HATA: %v", err)
+		}
+		fmt.Println(">> CEVAP:", resp.Content)
 	}
-	fmt.Printf("✅ İstemci Cevabı Aldı: %s (Süre: %v)\n", resp.Content, time.Since(start))
 
-	// Logların asenkron yazılması için biraz bekleyelim
-	time.Sleep(200 * time.Millisecond)
+	fmt.Printf("\n------------------------------------------------")
+	fmt.Printf("\n⏱️ İstemci Süresi: %v (Loglar asenkron arkada yazılıyor olabilir)\n", time.Since(start))
 
-	// --- SENARYO 2: Akış İsteği (Streaming) ---
-	fmt.Println("\n--- [TEST 2] Streaming Request Başlatılıyor... ---")
-	streamChan, err := finalClient.GenerateStream(ctx, ai.ChatRequest{
-		Model:    "gpt-3.5-turbo",
-		Messages: []ai.ChatMessage{{Role: "user", Content: []ai.Content{{Type: "text", Text: "Bana hikaye anlat"}}}},
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Print(">> Stream Akıyor: ")
-	for packet := range streamChan {
-		fmt.Print(packet.Chunk)
-	}
-	fmt.Println("\n✅ Stream Bitti.")
-
-	// Logların asenkron yazılması için son bir bekleme
-	fmt.Println("⏳ Logların yazılması bekleniyor...")
-	time.Sleep(200 * time.Millisecond)
-
-	fmt.Println("\n🏁 Test Tamamlandı.")
+	time.Sleep(100 * time.Millisecond)
 }
