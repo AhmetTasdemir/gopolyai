@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -11,21 +12,27 @@ import (
 	"github.com/ahmettasdemir/gopolyai/pkg/ai"
 	"github.com/ahmettasdemir/gopolyai/pkg/ai/anthropic"
 	"github.com/ahmettasdemir/gopolyai/pkg/ai/google"
+	"github.com/ahmettasdemir/gopolyai/pkg/ai/logger"
 	"github.com/ahmettasdemir/gopolyai/pkg/ai/middleware"
 	"github.com/ahmettasdemir/gopolyai/pkg/ai/ollama"
 	"github.com/ahmettasdemir/gopolyai/pkg/ai/openai"
 )
 
-func main() {
+type SimpleJSONLogger struct{}
 
+func (s *SimpleJSONLogger) Log(ctx context.Context, entry logger.LogEntry) {
+	data, _ := json.MarshalIndent(entry, "", "  ")
+	fmt.Printf("\n📝 [TELEMETRY LOG] >>\n%s\n", string(data))
+}
+
+func main() {
 	provider := flag.String("p", "ollama", "AI Sağlayıcısı")
 	apiKey := flag.String("k", os.Getenv("AI_API_KEY"), "API Key")
 	modelName := flag.String("m", "", "Model ismi")
-	streamMode := flag.Bool("s", false, "Streaming (Daktilo) modunu aç")
-
+	streamMode := flag.Bool("s", false, "Turn on streaming mode")
 	flag.Parse()
 
-	prompt := "Go dili neden hızlıdır?"
+	prompt := "What is an interface in Go?"
 	if len(flag.Args()) > 0 {
 		prompt = flag.Args()[0]
 	}
@@ -41,7 +48,7 @@ func main() {
 	case "ollama":
 		baseClient = ollama.NewClient()
 	default:
-		log.Fatalf("❌ Bilinmeyen sağlayıcı: %s", *provider)
+		log.Fatalf("Unknown provider: %s", *provider)
 	}
 
 	cfg := ai.Config{Temperature: 0.7}
@@ -51,12 +58,20 @@ func main() {
 	baseClient.Configure(cfg)
 
 	pricedClient := middleware.NewCostEstimator(baseClient)
-	retryClient := middleware.NewResilientClient(pricedClient, middleware.RetryConfig{
-		MaxRetries: 3, BaseDelay: 1 * time.Second, MaxDelay: 5 * time.Second,
-	})
-	finalClient := middleware.NewCircuitBreaker(retryClient, 3, 30*time.Second)
 
-	fmt.Printf("--- 🧠 %s Kullanılıyor ---\n", finalClient.Name())
+	retryClient := middleware.NewResilientClient(pricedClient, middleware.RetryConfig{
+		MaxRetries: 2, BaseDelay: 1 * time.Second, MaxDelay: 3 * time.Second,
+	})
+
+	myLogger := &SimpleJSONLogger{}
+	logConfig := logger.Config{
+		LogPayloads:   true,
+		LogErrorsOnly: false,
+	}
+	loggedClient := middleware.NewLoggingMiddleware(retryClient, myLogger, logConfig)
+	finalClient := middleware.NewCircuitBreaker(loggedClient, 3, 30*time.Second)
+
+	fmt.Printf("--- 🧠 %s Başlatılıyor ---\n", finalClient.Name())
 
 	req := ai.ChatRequest{
 		Model: *modelName,
@@ -67,10 +82,9 @@ func main() {
 	}
 
 	start := time.Now()
-	var finalUsage ai.TokenUsage
-	if *streamMode {
-		fmt.Println(">> CEVAP (Streaming):")
 
+	if *streamMode {
+		fmt.Println(">> STREAM MODU AKTİF...")
 		streamChan, err := finalClient.GenerateStream(context.Background(), req)
 		if err != nil {
 			log.Fatalf("HATA: %v", err)
@@ -81,36 +95,19 @@ func main() {
 				fmt.Printf("\n❌ Stream Hatası: %v\n", packet.Err)
 				break
 			}
-
 			fmt.Print(packet.Chunk)
-			if packet.Usage != nil {
-				finalUsage = *packet.Usage
-			}
 		}
 		fmt.Println()
-
 	} else {
 		resp, err := finalClient.Generate(context.Background(), req)
 		if err != nil {
 			log.Fatalf("HATA: %v", err)
 		}
 		fmt.Println(">> CEVAP:", resp.Content)
-		finalUsage = resp.Usage
 	}
 
-	fmt.Println("\n------------------------------------------------")
-	fmt.Printf("⏱️: %v\n", time.Since(start))
+	fmt.Printf("\n------------------------------------------------")
+	fmt.Printf("\n⏱️ İstemci Süresi: %v (Loglar asenkron arkada yazılıyor olabilir)\n", time.Since(start))
 
-	if finalUsage.TotalTokens > 0 {
-		fmt.Printf("🔢 Token: %d (Girdi: %d / Çıktı: %d)\n",
-			finalUsage.TotalTokens,
-			finalUsage.InputTokens,
-			finalUsage.OutputTokens)
-
-		if finalUsage.CostUSD > 0 {
-			fmt.Printf("💰: $%.6f\n", finalUsage.CostUSD)
-		} else {
-			fmt.Printf("💰: $0.000000 (Local/Ücretsiz)\n")
-		}
-	}
+	time.Sleep(100 * time.Millisecond)
 }
