@@ -1,6 +1,8 @@
 package config
 
 import (
+	"errors"
+	"fmt"
 	"os"
 
 	"gopkg.in/yaml.v3"
@@ -34,5 +36,26 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, err
 	}
 
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("configuration validation failed: %w", err)
+	}
+
 	return &cfg, nil
+}
+
+func (c *Config) Validate() error {
+	if c.ActiveProvider == "" {
+		return errors.New("active_provider is required in config.yaml")
+	}
+
+	provider, ok := c.Providers[c.ActiveProvider]
+	if !ok {
+		return fmt.Errorf("provider '%s' not found in providers list", c.ActiveProvider)
+	}
+
+	if provider.APIKey == "" && c.ActiveProvider != "ollama" {
+		return fmt.Errorf("api_key is required for provider '%s'", c.ActiveProvider)
+	}
+
+	return nil
 }

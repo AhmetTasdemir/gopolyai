@@ -30,6 +30,7 @@ func main() {
 	apiKey := flag.String("k", os.Getenv("AI_API_KEY"), "API Key")
 	modelName := flag.String("m", "", "Model name")
 	streamMode := flag.Bool("s", false, "Turn on streaming mode")
+	structMode := flag.Bool("struct", false, "Turn on structured output mode")
 	rateLimit := flag.Int("rate-limit", 0, "Rate limit (requests per second). 0 = unlimited")
 	flag.Parse()
 
@@ -107,6 +108,20 @@ func main() {
 			fmt.Print(packet.Chunk)
 		}
 		fmt.Println()
+	} else if *structMode {
+		fmt.Println(">> STRUCTURED MODE ACTIVE...")
+		type ResponseStruct struct {
+			Answer   string   `json:"answer" description:"The direct answer to the question"`
+			Keywords []string `json:"keywords" description:"List of important keywords related to the answer"`
+			IsCode   bool     `json:"is_code" description:"Whether the answer contains code snippets"`
+		}
+
+		var target ResponseStruct
+		err := ai.GenerateStruct(context.Background(), finalClient, req, &target)
+		if err != nil {
+			log.Fatalf("ERROR: %v", err)
+		}
+		fmt.Printf(">> RESPONSE STRUCT:\n%+v\n", target)
 	} else {
 		resp, err := finalClient.Generate(context.Background(), req)
 		if err != nil {

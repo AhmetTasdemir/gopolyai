@@ -41,39 +41,49 @@ func (l *LoggingMiddleware) Generate(ctx context.Context, req ai.ChatRequest) (*
 
 	duration := time.Since(start)
 
-	go func(finalResp *ai.ChatResponse, finalErr error, dur time.Duration) {
+	var usage ai.TokenUsage
+	var responseContent string
+
+	if resp != nil {
+		usage = resp.Usage
+		if l.config.LogPayloads {
+			responseContent = resp.Content
+		}
+	}
+
+	var requestContent string
+	if l.config.LogPayloads {
+		raw := fmt.Sprintf("%v", req.Messages)
+		if len(raw) > 2000 {
+			requestContent = raw[:2000] + " ... (truncated)"
+		} else {
+			requestContent = raw
+		}
+	}
+
+	go func(u ai.TokenUsage, resP string, reqP string, finalErr error, dur time.Duration) {
 		if l.config.LogErrorsOnly && finalErr == nil {
 			return
 		}
 
 		entry := logger.LogEntry{
-			Timestamp: start.Add(dur),
-			Duration:  dur,
-			Provider:  l.next.Name(),
-			Model:     req.Model,
-			Operation: "Generate",
-			Error:     finalErr,
-			TraceID:   GetTraceID(ctx),
-		}
-
-		if l.config.LogPayloads {
-
-			entry.RequestPayload = fmt.Sprintf("%v", req.Messages)
-		}
-
-		if finalResp != nil {
-			entry.InputTokens = finalResp.Usage.InputTokens
-			entry.OutputTokens = finalResp.Usage.OutputTokens
-			entry.TotalTokens = finalResp.Usage.TotalTokens
-			entry.CostUSD = finalResp.Usage.CostUSD
-
-			if l.config.LogPayloads {
-				entry.ResponsePayload = finalResp.Content
-			}
+			Timestamp:       start.Add(dur),
+			Duration:        dur,
+			Provider:        l.next.Name(),
+			Model:           req.Model,
+			Operation:       "Generate",
+			Error:           finalErr,
+			TraceID:         GetTraceID(ctx),
+			InputTokens:     u.InputTokens,
+			OutputTokens:    u.OutputTokens,
+			TotalTokens:     u.TotalTokens,
+			CostUSD:         u.CostUSD,
+			RequestPayload:  reqP,
+			ResponsePayload: resP,
 		}
 
 		l.logger.Log(context.Background(), entry)
-	}(resp, err, duration)
+	}(usage, responseContent, requestContent, err, duration)
 
 	return resp, err
 }

@@ -74,9 +74,12 @@ func (r *ResilientClient) Generate(ctx context.Context, req ai.ChatRequest) (*ai
 
 		fmt.Printf(">>> Waiting %v before retrying...\n", sleepDuration)
 
+		timer := time.NewTimer(sleepDuration)
 		select {
-		case <-time.After(sleepDuration):
+		case <-timer.C:
+			timer.Stop()
 		case <-ctx.Done():
+			timer.Stop()
 			return nil, ctx.Err()
 		}
 	}

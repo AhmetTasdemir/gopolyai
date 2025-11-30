@@ -45,7 +45,8 @@ func (t *TracingMiddleware) ensureTraceID(ctx context.Context) context.Context {
 	if ctx.Value(TraceIDKey) != nil {
 		return ctx
 	}
-	id := uuid.New().String()
+
+	id := uuid.NewString()
 	return context.WithValue(ctx, TraceIDKey, id)
 }
 

@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -113,7 +114,8 @@ func (c *Client) Generate(ctx context.Context, req ai.ChatRequest) (*ai.ChatResp
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("anthropic status: %d", resp.StatusCode)
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("anthropic status: %d, body: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var apiResp struct {
@@ -192,8 +194,9 @@ func (c *Client) GenerateStream(ctx context.Context, req ai.ChatRequest) (<-chan
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		return nil, fmt.Errorf("anthropic stream status: %d", resp.StatusCode)
+		return nil, fmt.Errorf("anthropic stream status: %d, body: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	go func() {

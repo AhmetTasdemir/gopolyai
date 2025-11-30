@@ -185,6 +185,13 @@ func (c *Client) GenerateStream(ctx context.Context, req ai.ChatRequest) (<-chan
 		decoder := json.NewDecoder(resp.Body)
 
 		for {
+			select {
+			case <-ctx.Done():
+				streamChan <- ai.StreamResponse{Err: ctx.Err()}
+				return
+			default:
+			}
+
 			var chunk struct {
 				Message struct {
 					Content string `json:"content"`

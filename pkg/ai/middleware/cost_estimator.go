@@ -54,6 +54,7 @@ func (ce *CostEstimator) Configure(cfg ai.Config) error {
 func (ce *CostEstimator) Name() string {
 	return ce.provider.Name()
 }
+
 func (ce *CostEstimator) Generate(ctx context.Context, req ai.ChatRequest) (*ai.ChatResponse, error) {
 	resp, err := ce.provider.Generate(ctx, req)
 	if err != nil {
@@ -61,9 +62,6 @@ func (ce *CostEstimator) Generate(ctx context.Context, req ai.ChatRequest) (*ai.
 	}
 
 	modelName := req.Model
-	if modelName == "" {
-	}
-
 	price, found := ce.findPrice(modelName)
 
 	if found && (resp.Usage.InputTokens > 0 || resp.Usage.OutputTokens > 0) {
@@ -87,6 +85,7 @@ func (ce *CostEstimator) GenerateStream(ctx context.Context, req ai.ChatRequest)
 	proxyChan := make(chan ai.StreamResponse, 10)
 	modelName := req.Model
 	price, found := ce.findPrice(modelName)
+
 	go func() {
 		defer close(proxyChan)
 
@@ -106,14 +105,24 @@ func (ce *CostEstimator) GenerateStream(ctx context.Context, req ai.ChatRequest)
 }
 
 func (ce *CostEstimator) findPrice(model string) (ModelPrice, bool) {
-
 	if p, ok := ce.pricing[model]; ok {
 		return p, true
 	}
-	for key, price := range ce.pricing {
-		if strings.Contains(model, key) {
-			return price, true
+
+	var bestMatchKey string
+	var maxLen int
+
+	for key := range ce.pricing {
+		if strings.HasPrefix(model, key) {
+			if len(key) > maxLen {
+				maxLen = len(key)
+				bestMatchKey = key
+			}
 		}
+	}
+
+	if bestMatchKey != "" {
+		return ce.pricing[bestMatchKey], true
 	}
 
 	return ModelPrice{}, false

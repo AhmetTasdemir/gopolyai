@@ -48,18 +48,24 @@ func (cb *CircuitBreaker) Name() string {
 func (cb *CircuitBreaker) Generate(ctx context.Context, req ai.ChatRequest) (*ai.ChatResponse, error) {
 	cb.mu.Lock()
 
+	// 1. CHECK STATE (Inside Lock)
 	if cb.state == StateOpen {
 		if time.Since(cb.lastFailureTime) > cb.resetTimeout {
+			// State transition: Open -> HalfOpen
 			cb.state = StateHalfOpen
 			fmt.Println("⚡ [Circuit Breaker] Timeout exceeded, testing system (Half-Open)...")
 		} else {
+			// Fast failure
 			cb.mu.Unlock()
 			return nil, fmt.Errorf("circuit breaker is OPEN: requests are blocked for safety")
 		}
 	}
 	cb.mu.Unlock()
+
+	// 2. EXECUTE PROVIDER (Outside Lock to allow concurrency)
 	resp, err := cb.provider.Generate(ctx, req)
 
+	// 3. UPDATE STATE (Inside Lock)
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
 
@@ -78,15 +84,20 @@ func (cb *CircuitBreaker) Generate(ctx context.Context, req ai.ChatRequest) (*ai
 		return nil, err
 	}
 
+	// Success case
 	if cb.state == StateHalfOpen {
 		fmt.Println("✅ [Circuit Breaker] Test successful! Circuit closing (System Returned to Normal).")
+		cb.state = StateClosed
+		cb.failures = 0
+	} else if cb.state == StateClosed {
+		// Optional: Reset failure count on success to effectively use "consecutive failures" logic
+		cb.failures = 0
 	}
-	cb.failures = 0
-	cb.state = StateClosed
 
 	return resp, nil
 }
 
 func (cb *CircuitBreaker) GenerateStream(ctx context.Context, req ai.ChatRequest) (<-chan ai.StreamResponse, error) {
+	// For v1.4.0, Stream passes through. In v2.0, Full Stream Protection will be added.
 	return cb.provider.GenerateStream(ctx, req)
 }
