@@ -55,7 +55,7 @@ func (r *ResilientClient) Generate(ctx context.Context, req ai.ChatRequest) (*ai
 		}
 
 		lastErr = err
-		fmt.Printf("[%s] Hata (Deneme %d/%d): %v\n", r.provider.Name(), i+1, r.config.MaxRetries+1, err)
+		fmt.Printf("[%s] Error (Attempt %d/%d): %v\n", r.provider.Name(), i+1, r.config.MaxRetries+1, err)
 
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
@@ -72,7 +72,7 @@ func (r *ResilientClient) Generate(ctx context.Context, req ai.ChatRequest) (*ai
 			sleepDuration = r.config.MaxDelay
 		}
 
-		fmt.Printf(">>> %v bekleyip tekrar deniyor...\n", sleepDuration)
+		fmt.Printf(">>> Waiting %v before retrying...\n", sleepDuration)
 
 		select {
 		case <-time.After(sleepDuration):

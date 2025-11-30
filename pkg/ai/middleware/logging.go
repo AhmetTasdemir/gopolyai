@@ -53,6 +53,7 @@ func (l *LoggingMiddleware) Generate(ctx context.Context, req ai.ChatRequest) (*
 			Model:     req.Model,
 			Operation: "Generate",
 			Error:     finalErr,
+			TraceID:   GetTraceID(ctx),
 		}
 
 		if l.config.LogPayloads {
@@ -82,12 +83,13 @@ func (l *LoggingMiddleware) GenerateStream(ctx context.Context, req ai.ChatReque
 
 	originalChan, err := l.next.GenerateStream(ctx, req)
 	if err != nil {
-
-		go l.logStreamSummary(start, req.Model, nil, "", err)
+		traceID := GetTraceID(ctx)
+		go l.logStreamSummary(start, req.Model, nil, "", err, traceID)
 		return nil, err
 	}
 
 	proxyChan := make(chan ai.StreamResponse, 10)
+	traceID := GetTraceID(ctx)
 
 	go func() {
 		defer close(proxyChan)
@@ -113,13 +115,13 @@ func (l *LoggingMiddleware) GenerateStream(ctx context.Context, req ai.ChatReque
 			proxyChan <- packet
 		}
 
-		l.logStreamSummary(start, req.Model, finalUsage, fullContentBuilder, lastErr)
+		l.logStreamSummary(start, req.Model, finalUsage, fullContentBuilder, lastErr, traceID)
 	}()
 
 	return proxyChan, nil
 }
 
-func (l *LoggingMiddleware) logStreamSummary(start time.Time, model string, usage *ai.TokenUsage, content string, err error) {
+func (l *LoggingMiddleware) logStreamSummary(start time.Time, model string, usage *ai.TokenUsage, content string, err error, traceID string) {
 	if l.config.LogErrorsOnly && err == nil {
 		return
 	}
@@ -133,6 +135,7 @@ func (l *LoggingMiddleware) logStreamSummary(start time.Time, model string, usag
 		Operation:       "GenerateStream",
 		Error:           err,
 		ResponsePayload: content,
+		TraceID:         traceID,
 	}
 
 	if usage != nil {

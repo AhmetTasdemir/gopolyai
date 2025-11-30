@@ -26,9 +26,9 @@ func (s *SimpleJSONLogger) Log(ctx context.Context, entry logger.LogEntry) {
 }
 
 func main() {
-	provider := flag.String("p", "ollama", "AI Sağlayıcısı")
+	provider := flag.String("p", "ollama", "AI Provider")
 	apiKey := flag.String("k", os.Getenv("AI_API_KEY"), "API Key")
-	modelName := flag.String("m", "", "Model ismi")
+	modelName := flag.String("m", "", "Model name")
 	streamMode := flag.Bool("s", false, "Turn on streaming mode")
 	rateLimit := flag.Int("rate-limit", 0, "Rate limit (requests per second). 0 = unlimited")
 	flag.Parse()
@@ -62,7 +62,7 @@ func main() {
 
 	var rateLimitedClient ai.AIProvider = pricedClient
 	if *rateLimit > 0 {
-		fmt.Printf(">> Rate Limiter Aktif: %d req/s\n", *rateLimit)
+		fmt.Printf(">> Rate Limiter Active: %d req/s\n", *rateLimit)
 		rateLimitedClient = middleware.NewRateLimiterMiddleware(pricedClient, *rateLimit, *rateLimit)
 	}
 
@@ -76,9 +76,11 @@ func main() {
 		LogErrorsOnly: false,
 	}
 	loggedClient := middleware.NewLoggingMiddleware(retryClient, myLogger, logConfig)
-	finalClient := middleware.NewCircuitBreaker(loggedClient, 3, 30*time.Second)
+	breakerClient := middleware.NewCircuitBreaker(loggedClient, 3, 30*time.Second)
 
-	fmt.Printf("--- 🧠 %s Başlatılıyor ---\n", finalClient.Name())
+	finalClient := middleware.NewTracingMiddleware(breakerClient)
+
+	fmt.Printf("--- 🧠 %s Initializing ---\n", finalClient.Name())
 
 	req := ai.ChatRequest{
 		Model: *modelName,
@@ -91,15 +93,15 @@ func main() {
 	start := time.Now()
 
 	if *streamMode {
-		fmt.Println(">> STREAM MODU AKTİF...")
+		fmt.Println(">> STREAM MODE ACTIVE...")
 		streamChan, err := finalClient.GenerateStream(context.Background(), req)
 		if err != nil {
-			log.Fatalf("HATA: %v", err)
+			log.Fatalf("ERROR: %v", err)
 		}
 
 		for packet := range streamChan {
 			if packet.Err != nil {
-				fmt.Printf("\n❌ Stream Hatası: %v\n", packet.Err)
+				fmt.Printf("\n Stream Error: %v\n", packet.Err)
 				break
 			}
 			fmt.Print(packet.Chunk)
@@ -108,13 +110,13 @@ func main() {
 	} else {
 		resp, err := finalClient.Generate(context.Background(), req)
 		if err != nil {
-			log.Fatalf("HATA: %v", err)
+			log.Fatalf("ERROR: %v", err)
 		}
-		fmt.Println(">> CEVAP:", resp.Content)
+		fmt.Println(">> RESPONSE:", resp.Content)
 	}
 
 	fmt.Printf("\n------------------------------------------------")
-	fmt.Printf("\n⏱️ İstemci Süresi: %v (Loglar asenkron arkada yazılıyor olabilir)\n", time.Since(start))
+	fmt.Printf("\n Client Duration: %v (Logs might be written asynchronously in the background)\n", time.Since(start))
 
 	time.Sleep(100 * time.Millisecond)
 }

@@ -32,22 +32,22 @@ func TestLoggingMiddleware_Generate(t *testing.T) {
 
 	_, err := mw.Generate(context.Background(), req)
 	if err != nil {
-		t.Fatalf("Beklenmeyen hata: %v", err)
+		t.Fatalf("Unexpected error: %v", err)
 	}
 
 	time.Sleep(50 * time.Millisecond)
 
 	if capture.CallCount != 1 {
-		t.Errorf("Log çağrılmadı. Count: %d", capture.CallCount)
+		t.Errorf("Log not called. Count: %d", capture.CallCount)
 	}
 	if capture.LastEntry.Operation != "Generate" {
-		t.Errorf("Yanlış operasyon ismi: %s", capture.LastEntry.Operation)
+		t.Errorf("Wrong operation name: %s", capture.LastEntry.Operation)
 	}
 	if capture.LastEntry.CostUSD <= 0 {
-		t.Error("Maliyet loglanmadı (CostEstimator entegrasyon hatası)")
+		t.Error("Cost not logged (CostEstimator integration error)")
 	}
 	if capture.LastEntry.ResponsePayload != "MOCK: Test Response" {
-		t.Errorf("Payload loglanmadı: %s", capture.LastEntry.ResponsePayload)
+		t.Errorf("Payload not logged: %s", capture.LastEntry.ResponsePayload)
 	}
 }
 
@@ -65,13 +65,13 @@ func TestLoggingMiddleware_Stream(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	if capture.CallCount != 1 {
-		t.Errorf("Stream bitiminde log atılmadı")
+		t.Errorf("Log not created at end of stream")
 	}
 	if capture.LastEntry.Operation != "GenerateStream" {
-		t.Errorf("Stream operasyon ismi yanlış")
+		t.Errorf("Stream operation name wrong")
 	}
 	if capture.LastEntry.ResponsePayload != "Hello World" {
-		t.Errorf("Stream içeriği birleştirilmedi: %s", capture.LastEntry.ResponsePayload)
+		t.Errorf("Stream content not merged: %s", capture.LastEntry.ResponsePayload)
 	}
 }
 

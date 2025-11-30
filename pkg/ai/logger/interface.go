@@ -21,6 +21,7 @@ type LogEntry struct {
 
 	RequestPayload  string
 	ResponsePayload string
+	TraceID         string
 }
 
 type Logger interface {

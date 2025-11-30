@@ -23,16 +23,16 @@ func NewClient(response string, shouldFail bool) *MockClient {
 func (m *MockClient) Configure(cfg ai.Config) error { return nil }
 func (m *MockClient) Name() string                  { return "Mock AI" }
 
-// Stream henüz boş
+// Stream is empty for now
 func (m *MockClient) GenerateStream(ctx context.Context, req ai.ChatRequest) (<-chan ai.StreamResponse, error) {
 	return nil, nil
 }
 
-// GÜNCELLENDİ: Yeni struct yapıları
+// UPDATED: New struct structures
 func (m *MockClient) Generate(ctx context.Context, req ai.ChatRequest) (*ai.ChatResponse, error) {
 	if m.ShouldFail {
 		m.FailCount++
-		// İlk 2 denemede hata ver (Retry mekanizmasını test etmek için)
+		// Fail on first 2 attempts (To test Retry mechanism)
 		if m.FailCount <= 2 {
 			return nil, ai.ErrProviderDown
 		}

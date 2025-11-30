@@ -51,7 +51,7 @@ func (cb *CircuitBreaker) Generate(ctx context.Context, req ai.ChatRequest) (*ai
 	if cb.state == StateOpen {
 		if time.Since(cb.lastFailureTime) > cb.resetTimeout {
 			cb.state = StateHalfOpen
-			fmt.Println("⚡ [Circuit Breaker] Süre doldu, sistem test ediliyor (Half-Open)...")
+			fmt.Println("⚡ [Circuit Breaker] Timeout exceeded, testing system (Half-Open)...")
 		} else {
 			cb.mu.Unlock()
 			return nil, fmt.Errorf("circuit breaker is OPEN: requests are blocked for safety")
@@ -67,11 +67,11 @@ func (cb *CircuitBreaker) Generate(ctx context.Context, req ai.ChatRequest) (*ai
 		cb.failures++
 		cb.lastFailureTime = time.Now()
 
-		fmt.Printf("⚡ [Circuit Breaker] Hata algılandı (%d/%d)\n", cb.failures, cb.failureThreshold)
+		fmt.Printf("⚡ [Circuit Breaker] Error detected (%d/%d)\n", cb.failures, cb.failureThreshold)
 
 		if cb.failures >= cb.failureThreshold {
 			if cb.state != StateOpen {
-				fmt.Println("🔥 [Circuit Breaker] EŞİK AŞILDI! DEVRE AÇILIYOR (Sistem Korumada).")
+				fmt.Println("🔥 [Circuit Breaker] THRESHOLD EXCEEDED! CIRCUIT OPENING (System Protected).")
 			}
 			cb.state = StateOpen
 		}
@@ -79,7 +79,7 @@ func (cb *CircuitBreaker) Generate(ctx context.Context, req ai.ChatRequest) (*ai
 	}
 
 	if cb.state == StateHalfOpen {
-		fmt.Println("✅ [Circuit Breaker] Test başarılı! Devre kapatılıyor (Sistem Normale Döndü).")
+		fmt.Println("✅ [Circuit Breaker] Test successful! Circuit closing (System Returned to Normal).")
 	}
 	cb.failures = 0
 	cb.state = StateClosed

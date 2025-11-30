@@ -29,16 +29,16 @@ func (f *FallbackClient) Name() string {
 	return fmt.Sprintf("SmartFallback (Pri: %s -> Sec: %s)", f.Primary.Name(), f.Secondary.Name())
 }
 
-// GÜNCELLENDİ: String yerine ChatRequest alıyor, ChatResponse dönüyor
+// UPDATED: Takes ChatRequest instead of String, returns ChatResponse
 func (f *FallbackClient) Generate(ctx context.Context, req ChatRequest) (*ChatResponse, error) {
-	fmt.Printf("[Fallback] %s deneniyor...\n", f.Primary.Name())
+	fmt.Printf("[Fallback] Trying %s...\n", f.Primary.Name())
 
 	resp, err := f.Primary.Generate(ctx, req)
 	if err == nil {
 		return resp, nil
 	}
 
-	fmt.Printf("[UYARI] Primary hata verdi: %v. Secondary (%s) devreye giriyor...\n", err, f.Secondary.Name())
+	fmt.Printf("[WARNING] Primary failed: %v. Secondary (%s) activating...\n", err, f.Secondary.Name())
 
 	respSec, errSec := f.Secondary.Generate(ctx, req)
 	if errSec != nil {
@@ -48,8 +48,8 @@ func (f *FallbackClient) Generate(ctx context.Context, req ChatRequest) (*ChatRe
 	return respSec, nil
 }
 
-// GÜNCELLENDİ: Stream imzası da değişti
+// UPDATED: Stream signature also changed
 func (f *FallbackClient) GenerateStream(ctx context.Context, req ChatRequest) (<-chan StreamResponse, error) {
-	// Şimdilik basit geçiş, ileride detaylandıracağız
+	// Simple switch for now, will detail later
 	return f.Primary.GenerateStream(ctx, req)
 }

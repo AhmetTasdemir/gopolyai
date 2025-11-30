@@ -4,49 +4,49 @@ import (
 	"context"
 	"testing"
 
-	// DÜZELTME: Import yolları tam modül adı olmalı (Küçük harfe dikkat)
+	// FIX: Import paths must be full module name (Watch for lowercase)
 	"github.com/ahmettasdemir/gopolyai/pkg/ai"
 	"github.com/ahmettasdemir/gopolyai/pkg/ai/mock"
 )
 
-// TestPolymorphism, interface'in yeni Request/Response yapısıyla çalışmasını test eder.
+// TestPolymorphism tests if the interface works with the new Request/Response structure.
 func TestPolymorphism(t *testing.T) {
-	// Senaryo: Başarılı Cevap
-	fakeAI := mock.NewClient("Her şey yolunda", false)
+	// Scenario: Successful Response
+	fakeAI := mock.NewClient("Everything is fine", false)
 
-	// Request Struct Oluştur
+	// Create Request Struct
 	req := ai.ChatRequest{
 		Model: "test-model",
 		Messages: []ai.ChatMessage{
 			{
 				Role: "user",
 				Content: []ai.Content{
-					{Type: "text", Text: "Merhaba"},
+					{Type: "text", Text: "Hello"},
 				},
 			},
 		},
 	}
 
-	// Generate çağır
+	// Call Generate
 	resp, err := fakeAI.Generate(context.Background(), req)
 
 	if err != nil {
-		t.Errorf("Hata beklemiyorduk ama hata aldık: %v", err)
+		t.Errorf("Unexpected error: %v", err)
 	}
 
-	// Struct cevabını kontrol et
-	expected := "MOCK: Her şey yolunda"
+	// Check Struct response
+	expected := "MOCK: Everything is fine"
 	if resp.Content != expected {
-		t.Errorf("Yanlış cevap.\nBeklenen: %s\nGelen: %s", expected, resp.Content)
+		t.Errorf("Wrong answer.\nExpected: %s\nGot: %s", expected, resp.Content)
 	}
 
-	// Metadata testi
+	// Metadata test
 	if resp.Usage.TotalTokens != 35 {
-		t.Errorf("Token sayımı yanlış. Beklenen: 35, Gelen: %d", resp.Usage.TotalTokens)
+		t.Errorf("Token count wrong. Expected: 35, Got: %d", resp.Usage.TotalTokens)
 	}
 }
 
-// TestMultipleProviders, polimorfik dizide gezmeyi test eder.
+// TestMultipleProviders tests iterating through polymorphic array.
 func TestMultipleProviders(t *testing.T) {
 	providers := []ai.AIProvider{
 		mock.NewClient("Bot 1", false),
@@ -55,7 +55,7 @@ func TestMultipleProviders(t *testing.T) {
 
 	for i, p := range providers {
 		if p.Name() != "Mock AI" {
-			t.Errorf("Provider %d ismi yanlış: %s", i, p.Name())
+			t.Errorf("Provider %d name wrong: %s", i, p.Name())
 		}
 	}
 }

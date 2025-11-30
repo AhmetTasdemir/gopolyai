@@ -63,6 +63,7 @@ func main() {
 	var rateLimitedClient ai.AIProvider = pricedClient
 	if *rateLimit > 0 {
 		fmt.Printf(">> Rate Limiter Aktif: %d req/s\n", *rateLimit)
+		// Burst size is set to rateLimit to allow some flexibility
 		rateLimitedClient = middleware.NewRateLimiterMiddleware(pricedClient, *rateLimit, *rateLimit)
 	}
 
@@ -76,7 +77,8 @@ func main() {
 		LogErrorsOnly: false,
 	}
 	loggedClient := middleware.NewLoggingMiddleware(retryClient, myLogger, logConfig)
-	finalClient := middleware.NewCircuitBreaker(loggedClient, 3, 30*time.Second)
+	tracedClient := middleware.NewTracingMiddleware(loggedClient)
+	finalClient := middleware.NewCircuitBreaker(tracedClient, 3, 30*time.Second)
 
 	fmt.Printf("--- 🧠 %s Başlatılıyor ---\n", finalClient.Name())
 
