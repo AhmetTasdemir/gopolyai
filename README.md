@@ -1,22 +1,24 @@
 # GoPolyAI
 
-A vendor-agnostic AI gateway and wrapper library for Go. It provides a unified interface for multiple AI providers with a robust middleware pipeline for resiliency, observability, and cost management.
+A vendor-agnostic AI gateway and wrapper library for Go. Unifies interactions with OpenAI, Anthropic, Google Gemini, and Ollama under a single interface with a built-in middleware pipeline.
 
 ## Features
 
-  * **Unified Interface:** Switch between OpenAI, Anthropic (Claude), Google (Gemini), and Ollama (Local) without changing business logic.
-  * **Resilience:** Built-in **Circuit Breaker** and **Retry** with exponential backoff.
-  * **Traffic Control:** Token bucket **Rate Limiter**.
-  * **Observability:** Structured **Logging**, **Tracing** (UUID), and **Cost Estimation** (USD).
-  * **Modes:** Support for Standard Chat, **Streaming**, and **Structured Output** (JSON-to-Struct).
+- **Unified Interface:** Switch providers without changing business logic.
+- **Resilience:** Circuit Breaker and Exponential Backoff Retry.
+- **Traffic Control:** Token bucket Rate Limiter.
+- **Observability:** Structured Logging, Distributed Tracing (UUID), and Cost Estimation.
+- **Structured Output:** Type-safe conversion from LLM text to Go Structs.
 
 ## Installation
 
 ```bash
 go get github.com/ahmettasdemir/gopolyai
-```
+````
 
-## Quick Start (Library)
+## Usage
+
+### 1\. Basic Chat
 
 ```go
 package main
@@ -28,58 +30,91 @@ import (
 
 	"github.com/ahmettasdemir/gopolyai/pkg/ai"
 	"github.com/ahmettasdemir/gopolyai/pkg/ai/openai"
-	"github.com/ahmettasdemir/gopolyai/pkg/ai/middleware"
 )
 
 func main() {
-	// 1. Initialize Base Provider
 	client := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
 
-	// 2. Wrap with Middleware (Optional)
-	// Example: Cost Estimator -> Rate Limiter -> Retry -> Base Client
-	pricedClient := middleware.NewCostEstimator(client)
-	retryClient := middleware.NewResilientClient(pricedClient, middleware.RetryConfig{
-		MaxRetries: 3,
-	})
-
-	// 3. Generate
 	req := ai.ChatRequest{
 		Messages: []ai.ChatMessage{{Role: "user", Content: []ai.Content{{Type: "text", Text: "Hello!"}}}},
 	}
 	
-	resp, _ := retryClient.Generate(context.Background(), req)
-	fmt.Printf("Response: %s\nCost: $%f\n", resp.Content, resp.Usage.CostUSD)
+	resp, _ := client.Generate(context.Background(), req)
+	fmt.Println(resp.Content)
 }
+```
+
+### 2\. Advanced Middleware Pipeline
+
+Construct a production-ready pipeline with resilience, logging, and tracing.
+
+```go
+// Order: Tracing -> CircuitBreaker -> Logging -> Retry -> RateLimit -> Cost -> Provider
+func main() {
+	base := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
+
+	// Inner Layer: Cost & Traffic Control
+	pipeline := middleware.NewCostEstimator(base)
+	pipeline = middleware.NewRateLimiterMiddleware(pipeline, 10, 10) // 10 req/s
+	
+	// Middle Layer: Resilience
+	pipeline = middleware.NewResilientClient(pipeline, middleware.RetryConfig{MaxRetries: 3})
+
+	// Outer Layer: Observability & Safety
+	pipeline = middleware.NewLoggingMiddleware(pipeline, &MyLogger{}, config)
+	pipeline = middleware.NewCircuitBreaker(pipeline, 3, 30*time.Second)
+	finalClient := middleware.NewTracingMiddleware(pipeline)
+
+	resp, err := finalClient.Generate(ctx, req)
+}
+```
+
+### 3\. Structured Output (JSON-to-Struct)
+
+Force the LLM to return data matching your Go struct definition.
+
+```go
+type SentimentAnalysis struct {
+    Score    int      `json:"score" description:"Score between 1-10"`
+    Keywords []string `json:"keywords"`
+    Summary  string   `json:"summary"`
+}
+
+var result SentimentAnalysis
+// Automatically generates schema, injects prompt, and unmarshals response
+err := ai.GenerateStruct(ctx, client, req, &result)
+
+fmt.Printf("Score: %d | Summary: %s", result.Score, result.Summary)
 ```
 
 ## CLI Usage
 
-The project includes a CLI tool for testing providers and middleware chains.
+Test providers and configurations directly from the terminal.
 
 ```bash
 # Basic Usage
 go run ./cmd/gopoly -p openai -k "sk-..." "Explain quantum physics"
 
-# Streaming Mode (-s) with Rate Limit (-rate-limit)
+# Streaming Mode with Rate Limit
 go run ./cmd/gopoly -p ollama -m llama3 -s -rate-limit 5 "Tell me a story"
 
-# Structured Output Mode (-struct)
+# Structured Output Mode
 go run ./cmd/gopoly -p google -k "AIza..." -struct "Extract keywords: Go, AI, Cloud"
 ```
 
 **Flags:**
 
-  * `-p`: Provider (`openai`, `anthropic`, `google`, `ollama`)
-  * `-k`: API Key (or set via env `AI_API_KEY`)
-  * `-m`: Model Name (optional override)
-  * `-s`: Enable Streaming
-  * `-struct`: Enable Structured JSON Output
-  * `-rate-limit`: Requests per second (0 = unlimited)
+  - `-p`: Provider (`openai`, `anthropic`, `google`, `ollama`)
+  - `-k`: API Key (or set via `AI_API_KEY`)
+  - `-m`: Model Name (optional)
+  - `-s`: Enable Streaming
+  - `-struct`: Enable Structured JSON Output
+  - `-rate-limit`: Requests per second (0 = unlimited)
 
 ## Supported Providers
 
 | Provider | Package | Env Key |
-| :--- | :--- | :--- |
+|----------|---------|---------|
 | **OpenAI** | `pkg/ai/openai` | `OPENAI_API_KEY` |
 | **Anthropic** | `pkg/ai/anthropic` | `ANTHROPIC_API_KEY` |
 | **Google Gemini** | `pkg/ai/google` | `GEMINI_API_KEY` |
